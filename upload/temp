@@ -1,0 +1,41 @@
+import numpy as np
+import pandas as pd
+
+a = H0_RESULTS["pure_mmd"]
+b = H0_RESULTS["q70_aligned"]
+
+# Inspect the configurations recorded with the actual results.
+for name, result in [("Pure MMD", a), ("MMD + Q70", b)]:
+    cfg = result["metadata"]["config"]
+    print(name, {
+        "align_mode": cfg["align_mode"],
+        "lambda_align": cfg["lambda_align"],
+        "width": cfg["width"],
+        "lr": cfg["lr"],
+        "oracle": result["metadata"]["oracle"],
+    })
+    print("Cache:", result.get("cache", "Loaded from H0 archive"))
+
+assert a["seeds"] == b["seeds"], "Seed order differs."
+
+pa = np.asarray(a["pvalues"], dtype=float)
+pb = np.asarray(b["pvalues"], dtype=float)
+
+print("\nAll p-values exactly identical:", np.array_equal(pa, pb))
+print("Number of different p-values:", np.count_nonzero(pa != pb))
+print("Maximum absolute difference:", np.max(np.abs(pa - pb)))
+
+for level in (0.05, 0.10):
+    print(
+        f"Level {level:.2f}: "
+        f"MMD rejections={np.sum(pa < level)}, "
+        f"Q70 rejections={np.sum(pb < level)}, "
+        f"different rejection decisions={np.sum((pa < level) != (pb < level))}"
+    )
+
+display(pd.DataFrame({
+    "seed": a["seeds"],
+    "p_MMD": pa,
+    "p_Q70": pb,
+    "difference": pb - pa,
+}).head(20))
